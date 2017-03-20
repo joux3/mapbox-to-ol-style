@@ -286,7 +286,7 @@ function calculateStyleProperties(glStyle) {
       calculateReferencedPropertiesFromFilter(seenProperties, layer.filter);
     }
   }
-  console.log('seen properties', seenProperties)
+  return seenProperties;
 }
 
 /**
@@ -389,6 +389,21 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
 
   var styles = [];
 
+  var lastZoom;
+  var lastProperties = {};
+  var lastUsedPropertiesCount = 0;
+
+  // always needed
+  styleProperties['layer'] = true;
+
+  // todo
+  styleProperties['maki'] = true;
+  styleProperties['name'] = true;
+  styleProperties['name_en'] = true;
+  styleProperties['ref'] = true;
+
+  console.log('using properties for styling:', styleProperties);
+
   return function(feature, resolution) {
     var zoom = resolutions.indexOf(resolution);
     if (zoom == -1) {
@@ -396,6 +411,27 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
     }
     var properties = feature.getProperties();
     properties['$type'] = feature.getGeometry().getType().replace('Multi', '');
+
+    var isMatch = lastZoom === zoom;
+    var usedPropertiesCount = 0;
+    for (var property in properties) {
+      // don't bother comparing properties that don't affect styles
+      if (!styleProperties[property]) {
+        continue;
+      }
+      ++usedPropertiesCount;
+      isMatch = isMatch && lastProperties[property] === properties[property];
+    }
+    isMatch = isMatch && lastUsedPropertiesCount === usedPropertiesCount;
+
+    if (isMatch) {
+      return styles;
+    }
+
+    lastProperties = properties;
+    lastUsedPropertiesCount = usedPropertiesCount;
+    lastZoom = zoom;
+
     var stylesLength = -1;
     for (var i = 0, ii = layers.length; i < ii; ++i) {
       var layer = layers[i];
@@ -577,9 +613,7 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
       }
     }
 
-    if (stylesLength > -1) {
-      styles.length = stylesLength + 1;
-      return styles;
-    }
+    styles.length = stylesLength + 1;
+    return styles;
   };
 }
