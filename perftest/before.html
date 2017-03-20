@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mapbox Vector Tiles</title>
+  <link rel="stylesheet" href="https://openlayers.org/en/v4.0.1/css/ol.css" type="text/css">
+  <script src="https://openlayers.org/en/v4.0.1/build/ol.js"></script>
+  <script src="./style.js"></script>
+  <script src="./mb2olstyle_before.js"></script>
+  <style>
+    .map {
+      background: #f8f4f0;
+    }
+  </style>
+</head>
+<body>
+<div id="map" class="map"></div>
+<script>
+
+  var key = ['pk.eyJ1Ij','oiYWhvY2V2YXIiLCJhIjoiRk1kMWZaS' +
+             'SJ9.E5Bk', 'luenyWQMsBLsuByrmg'].join('');
+
+  var map = new ol.Map({
+    layers: [
+      new ol.layer.VectorTile({
+        source: new ol.source.VectorTile({
+          attributions: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> ' +
+          '© <a href="https://www.openstreetmap.org/copyright">' +
+          'OpenStreetMap contributors</a>',
+          format: new ol.format.MVT(),
+          tileGrid: ol.tilegrid.createXYZ({maxZoom: 22}),
+          tilePixelRatio: 16,
+          url: 'https://{a-d}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6/' +
+          '{z}/{x}/{y}.vector.pbf?acc'+'ess'+'_to'+'ken=' + key
+        }),
+        style: mb2olstyle(mapStyle, 'mapbox')
+      })
+    ],
+    target: 'map',
+    view: new ol.View({
+      center: [0, 0],
+      zoom: 2
+    })
+  });
+
+  function perfTest() {
+    map.getView().setZoom(13);
+    map.getView().setCenter([4185739.442038929, 7506441.034974515]);
+  }
+</script>
+<button onclick="perfTest()">Start profiling in dev tools and then click here</button>
+</body>
+</html>
