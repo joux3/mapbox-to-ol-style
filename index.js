@@ -257,6 +257,38 @@ function fromTemplate(text, properties) {
   }
 }
 
+function hasTemplateString(text) {
+  var parts = text.match(templateRegEx);
+  return Boolean(parts);
+}
+
+function calculateReferencedPropertiesFromFilter(seenProperties, filterObj) {
+  var type = filterObj[0];
+  var propertyIsFirst = ['==', '!=', '>', '<', '>=', '<=', 'in', '!in', 'has', '!has'];
+  var recurseFilters = ['all', 'any', 'none'];
+  if (propertyIsFirst.indexOf(type) >= 0) {
+    seenProperties[filterObj[1]] = true;
+  } else if (recurseFilters.indexOf(type) >= 0) {
+    for (var i = 1; i < filterObj.length; ++i) {
+      calculateReferencedPropertiesFromFilter(seenProperties, filterObj[i]);
+    }
+  }
+}
+
+/*
+Calculates all the properties referenced in the style file
+*/
+function calculateStyleProperties(glStyle) {
+  var seenProperties = {};
+  for (var i = 0; i < glStyle.layers.length; i++) {
+    var layer = glStyle.layers[i];
+    if (layer.filter) {
+      calculateReferencedPropertiesFromFilter(seenProperties, layer.filter);
+    }
+  }
+  console.log('seen properties', seenProperties)
+}
+
 /**
  * Creates a style function from the `glStyle` object for all layers that use
  * the specified `source`, which needs to be a `"type": "vector"` or
@@ -347,6 +379,8 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
       preprocess(layer, fonts);
     }
   }
+
+  var styleProperties = calculateStyleProperties(glStyle);
 
   var textHalo = new Stroke();
   var textColor = new Fill();
