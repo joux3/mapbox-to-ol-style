@@ -46,7 +46,12 @@
     map.getView().setZoom(13);
     map.getView().setCenter([4185739.442038929, 7506441.034974515]);
   }
+  function bug() {
+    map.getView().setZoom(17);
+    map.getView().setCenter([-8234994.205589924, 4972799.660459132]);
+  }
 </script>
 <button onclick="perfTest()">Start profiling in dev tools and then click here</button>
+<button onclick="bug()">NYC water bug</button>
 </body>
 </html>
