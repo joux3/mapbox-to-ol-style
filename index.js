@@ -257,9 +257,9 @@ function fromTemplate(text, properties) {
   }
 }
 
-function hasTemplateString(text) {
+function getPropertyFromTemplate(text) {
   var parts = text.match(templateRegEx);
-  return Boolean(parts);
+  return parts && parts[2];
 }
 
 function calculateReferencedPropertiesFromFilter(seenProperties, filterObj) {
@@ -275,6 +275,23 @@ function calculateReferencedPropertiesFromFilter(seenProperties, filterObj) {
   }
 }
 
+function recurseForTemplates(seenProperties, toRecurse) {
+  if (typeof toRecurse === 'string') {
+    var templateUsed = getPropertyFromTemplate(toRecurse);
+    if (templateUsed) {
+      seenProperties[templateUsed] = true;
+    }
+  } else if (Object.prototype.toString.call(toRecurse) === '[object Array]' ) {
+    for (var i = 0; i < toRecurse.length; i++) {
+      recurseForTemplates(seenProperties, toRecurse[i]);
+    }
+  } else if (typeof toRecurse === 'object') {
+    for (var key in toRecurse) {
+      recurseForTemplates(seenProperties, toRecurse[key]);
+    }
+  }
+}
+
 /*
 Calculates all the properties referenced in the style file
 */
@@ -284,6 +301,12 @@ function calculateStyleProperties(glStyle) {
     var layer = glStyle.layers[i];
     if (layer.filter) {
       calculateReferencedPropertiesFromFilter(seenProperties, layer.filter);
+    }
+    if (layer.layout) {
+      recurseForTemplates(seenProperties, layer.layout)
+    }
+    if (layer.paint) {
+      recurseForTemplates(seenProperties, layer.paint)
     }
   }
   return seenProperties;
@@ -365,6 +388,8 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
     return wrappedText;
   }
 
+  var styleProperties = calculateStyleProperties(glStyle);
+
   var allLayers = glStyle.layers;
   var layers = [];
   for (var i = 0, ii = allLayers.length; i < ii; ++i) {
@@ -380,8 +405,6 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
     }
   }
 
-  var styleProperties = calculateStyleProperties(glStyle);
-
   var textHalo = new Stroke();
   var textColor = new Fill();
 
@@ -395,14 +418,6 @@ export default function(glStyle, source, resolutions, spriteData, spriteImageUrl
 
   // always needed
   styleProperties['layer'] = true;
-
-  // todo
-  styleProperties['maki'] = true;
-  styleProperties['name'] = true;
-  styleProperties['name_en'] = true;
-  styleProperties['ref'] = true;
-
-  console.log('using properties for styling:', styleProperties);
 
   var layersBySourceLayer = {};
   var layersWithoutSourceLayer = [];
