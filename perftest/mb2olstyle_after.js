@@ -51,6 +51,7 @@ exports.default = function (glStyle, source, resolutions, spriteData, spriteImag
   }
 
   var styleProperties = calculateStyleProperties(glStyle);
+  styleProperties['layer'] = true;
 
   var allLayers = glStyle.layers;
   var layers = [];
@@ -76,9 +77,6 @@ exports.default = function (glStyle, source, resolutions, spriteData, spriteImag
   var lastZoom;
   var lastProperties = {};
   var lastUsedPropertiesCount = 0;
-
-  // always needed
-  styleProperties['layer'] = true;
 
   var layersBySourceLayer = {};
   var layersWithoutSourceLayer = [];
