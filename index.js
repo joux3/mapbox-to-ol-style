@@ -244,6 +244,61 @@ function fromTemplate(text, properties) {
   return text;
 }
 
+function getPropertyFromTemplate(text) {
+  var parts = text.match(templateRegEx);
+  return parts && parts[2];
+}
+
+function calculateReferencedPropertiesFromFilter(seenProperties, filterObj) {
+  var type = filterObj[0];
+  var propertyIsFirst = ['==', '!=', '>', '<', '>=', '<=', 'in', '!in', 'has', '!has'];
+  var recurseFilters = ['all', 'any', 'none'];
+  if (propertyIsFirst.indexOf(type) >= 0) {
+    seenProperties[filterObj[1]] = true;
+  } else if (recurseFilters.indexOf(type) >= 0) {
+    for (var i = 1; i < filterObj.length; ++i) {
+      calculateReferencedPropertiesFromFilter(seenProperties, filterObj[i]);
+    }
+  }
+}
+
+function recurseForTemplates(seenProperties, toRecurse) {
+  if (typeof toRecurse === 'string') {
+    var templateUsed = getPropertyFromTemplate(toRecurse);
+    if (templateUsed) {
+      seenProperties[templateUsed] = true;
+    }
+  } else if (Object.prototype.toString.call(toRecurse) === '[object Array]' ) {
+    for (var i = 0; i < toRecurse.length; i++) {
+      recurseForTemplates(seenProperties, toRecurse[i]);
+    }
+  } else if (typeof toRecurse === 'object') {
+    for (var key in toRecurse) {
+      recurseForTemplates(seenProperties, toRecurse[key]);
+    }
+  }
+}
+
+/*
+ Calculates all the properties referenced in the style file
+ */
+function calculateStyleProperties(glStyle) {
+  var seenProperties = {};
+  for (var i = 0; i < glStyle.layers.length; i++) {
+    var layer = glStyle.layers[i];
+    if (layer.filter) {
+      calculateReferencedPropertiesFromFilter(seenProperties, layer.filter);
+    }
+    if (layer.layout) {
+      recurseForTemplates(seenProperties, layer.layout);
+    }
+    if (layer.paint) {
+      recurseForTemplates(seenProperties, layer.paint);
+    }
+  }
+  return seenProperties;
+}
+
 /**
  * Creates a style function from the `glStyle` object for all layers that use
  * the specified `source`, which needs to be a `"type": "vector"` or
@@ -338,6 +393,9 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
     return wrappedText;
   }
 
+  var styleProperties = calculateStyleProperties(glStyle);
+  styleProperties['layer'] = true;
+
   var allLayers = glStyle.layers;
   var layersBySourceLayer = {};
   var mapboxLayers = [];
@@ -374,6 +432,11 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
 
   var styles = [];
 
+  var lastZoom = -1;
+  var lastProperties = {};
+  var lastUsedPropertiesCount = 0;
+  var lastType = -1;
+
   var styleFunction = function(feature, resolution) {
     var properties = feature.getProperties();
     var layers = layersBySourceLayer[properties.layer];
@@ -389,6 +452,29 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
       properties: properties,
       type: type
     };
+
+    var isMatch = lastZoom === zoom;
+    isMatch = isMatch && type === lastType;
+    var usedPropertiesCount = 0;
+    for (var property in properties) {
+      // don't bother comparing properties that don't affect styles
+      if (!styleProperties[property]) {
+        continue;
+      }
+      ++usedPropertiesCount;
+      isMatch = isMatch && lastProperties[property] === properties[property];
+    }
+    isMatch = isMatch && lastUsedPropertiesCount === usedPropertiesCount;
+
+    if (isMatch) {
+      return styles;
+    }
+
+    lastProperties = properties;
+    lastUsedPropertiesCount = usedPropertiesCount;
+    lastZoom = zoom;
+    lastType = type;
+
     var stylesLength = -1;
     for (var i = 0, ii = layers.length; i < ii; ++i) {
       var layerData = layers[i];
@@ -666,10 +752,8 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
       }
     }
 
-    if (stylesLength > -1) {
-      styles.length = stylesLength + 1;
-      return styles;
-    }
+    styles.length = stylesLength + 1;
+    return styles;
   };
 
   olLayer.setStyle(styleFunction);
