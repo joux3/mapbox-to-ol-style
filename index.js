@@ -353,7 +353,6 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   var spriteImage, spriteImgSize;
   if (spriteImageUrl) {
     var img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = function() {
       spriteImage = img;
       spriteImgSize = [img.width, img.height];
