@@ -364,6 +364,9 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   var ctx = document.createElement('CANVAS').getContext('2d');
   var measureCache = {};
   function wrapText(text, font, em) {
+    if (text.indexOf(' ') === -1) {
+      return text
+    }
     var key = em + ',' + font + ',' + text;
     var wrappedText = measureCache[key];
     if (!wrappedText) {
