@@ -357,6 +357,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
       spriteImage = img;
       spriteImgSize = [img.width, img.height];
       olLayer.changed();
+      img.onload = null;
     };
     img.src = spriteImageUrl;
   }
